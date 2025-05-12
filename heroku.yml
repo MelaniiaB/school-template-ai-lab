@@ -1,3 +1,3 @@
 build:
   docker:
-    web: tg-bot/Dockerfile
+    worker: tg-bot/Dockerfile
