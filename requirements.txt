@@ -3,4 +3,4 @@ telepot
 typing-extensions==4.13.2
 keras
 numpy
-PIL
+pillow
