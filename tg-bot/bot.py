@@ -1,33 +1,74 @@
 import telepot
 from telepot.loop import MessageLoop
+from telepot.delegate import pave_event_space, per_chat_id, create_open
 from openai import OpenAI
+import os
+from mood_model import predict
 
 client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key="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",
+    api_key=os.environ.get("OPENAI_API_KEY"),
 )
 
-def message(msg):
-    content_type, chat_type, chat_id = telepot.glance(msg)
+class SafeMoodBot(telepot.helper.ChatHandler):
+    def __init__(self, *args, **kwargs):
+        super(SafeMoodBot, self).__init__(*args, **kwargs)
 
-    print(content_type, chat_type, chat_id)
+        self.history = []
 
-    completions = client.chat.completions.create(
-        model="openai/gpt-4o-mini",
-        messages=[
-           {
-           "role": "system",
-           "content": "You are a helpful assistant."
-           },
-           {
-           "role": "user",
-           "content": msg['text']
-           }
-      ]
-   )
+    def on_chat_message(self, msg):
+        print(msg)
+        content_type, chat_type, chat_id = telepot.glance(msg)
 
-    bot.sendMessage(chat_id, completions.choices[0].message.content)
+        print(content_type, chat_type, chat_id)
 
-bot = telepot.Bot("7950956474:AAHvx-rVL5rJkpD-zjKdeNHA8gMYVSFgGJE")
-MessageLoop(bot, {'chat': message}).run_forever()
+        if content_type != 'video_note':
+            return
 
+        self.bot.download_file(msg['video_note']['file_id'], msg['video_note']['file_id'] + ".mp4")
+        
+        # extract mp3 from mp4
+        os.system(f"ffmpeg -i {msg['video_note']['file_id']}.mp4 -vn -acodec libmp3lame {msg['video_note']['file_id']}.mp3")
+        # extract jpg frames from mp4
+        os.system(f"ffmpeg -i {msg['video_note']['file_id']}.mp4 -vf fps=1 {msg['video_note']['file_id']}_%04d.jpg")
+
+
+        audio_file = open(f"{msg['video_note']['file_id']}.mp3", "rb")
+
+        transcription = client.audio.transcriptions.create(
+            model="gpt-4o-transcribe", 
+            file=audio_file
+        )
+
+        mood = predict(f"{msg['video_note']['file_id']}_0001.jpg")
+        #mood = "веселий"  # default mood
+
+        text = transcription.text + ". У мене зараз настрій: " + mood
+        print(text)
+        self.history.append(text)
+
+        completions = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "ти бот-психолог, допоможи людині. не реагуй на настрій напряму, але коригуй свої відповіді в залежності від нього. якщо людина у поганому настрої, то спробуй її підбадьорити, якщо про хороший - підтримай її.",
+                },
+                {
+                    "role": "user",
+                    "content": ". ".join(self.history)
+                }
+            ]
+        )
+
+        os.remove(msg['video_note']['file_id'] + ".mp4")
+        os.remove(msg['video_note']['file_id'] + ".mp3")
+        os.system("rm " + msg['video_note']['file_id'] + "_*.jpg")
+
+        self.sender.sendMessage(completions.choices[0].message.content)
+
+
+bot = telepot.DelegatorBot(os.environ.get("BOT_KEY"), [
+    pave_event_space()(
+        per_chat_id(), create_open, SafeMoodBot, timeout=10),
+])
+MessageLoop(bot).run_forever()
