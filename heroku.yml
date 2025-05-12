@@ -1,5 +1,3 @@
 build:
   docker:
     web: tg-bot/Dockerfile
-run:
-  web: python tg-bot/bot.py
