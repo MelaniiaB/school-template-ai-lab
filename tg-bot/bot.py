@@ -71,4 +71,5 @@ bot = telepot.DelegatorBot(os.environ.get("BOT_KEY"), [
     pave_event_space()(
         per_chat_id(), create_open, SafeMoodBot, timeout=10),
 ])
+bot.deleteWebhook()
 MessageLoop(bot).run_forever()
