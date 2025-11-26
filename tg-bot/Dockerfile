@@ -1,17 +1,15 @@
-FROM python:3.8-slim
+FROM mambaorg/micromamba:1.5.8
 
-# Установка ffmpeg и зависимостей
-RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
-
-# Установка зависимостей Python
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование исходного кода
-COPY . .
+# Сначала копируем только окружение, чтобы кэшировать установку зависимостей
+COPY --chown=micromamba:micromamba environment.yaml /tmp/environment.yaml
+RUN micromamba create -y -n moodbot -f /tmp/environment.yaml && \
+    micromamba clean --all --yes
 
-# Запуск приложения (замените main.py на вашу точку входа)
-CMD python bot.py
+# Копируем исходный код
+COPY --chown=micromamba:micromamba . .
+
+# Запуск бота внутри подготовленного окружения
+CMD ["micromamba", "run", "-n", "moodbot", "python", "bot.py"]

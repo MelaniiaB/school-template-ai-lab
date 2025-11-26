@@ -5,3 +5,9 @@ keras
 numpy
 pillow
 tensorflow
+mediapipe
+opencv-python
+pandas
+pillow-heif
+scikit-learn
+joblib

@@ -56,3 +56,5 @@ logs/
 *.mp3
 *.jpg
 *.png
+
+dataset/
