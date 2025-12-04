@@ -1,47 +1,45 @@
-# from keras.models import load_model  # TensorFlow is required for Keras to work
-from keras.models import load_model  # TensorFlow is required for Keras to work
-from PIL import Image, ImageOps  # Install pillow instead of PIL
-import numpy as np
+from __future__ import annotations
 
-# Disable scientific notation for clarity
-np.set_printoptions(suppress=True)
+from pathlib import Path
+from typing import Tuple
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
+
+from model_train.predict_emotion import (
+    DEFAULT_LABELS,
+    DEFAULT_MODEL,
+    extract_landmarks,
+    load_artifacts,
+)
+
+DEFAULT_DETECTION_CONFIDENCE = 0.5
+
+_MODEL: RandomForestClassifier | None = None
+_LABEL_ENCODER: LabelEncoder | None = None
 
 
-# Load the model
-model = load_model("keras_model.h5", compile=False)
+def _ensure_model_loaded(
+    model_path: Path = DEFAULT_MODEL, labels_path: Path = DEFAULT_LABELS
+) -> Tuple[RandomForestClassifier, LabelEncoder]:
+    """Load RandomForest artifacts once and reuse them between predictions."""
+    global _MODEL, _LABEL_ENCODER
+    if _MODEL is None or _LABEL_ENCODER is None:
+        _MODEL, _LABEL_ENCODER = load_artifacts(model_path, labels_path)
+    return _MODEL, _LABEL_ENCODER
 
-# Load the labels
-class_names = open("labels.txt", "r").readlines()
 
-# Create the array of the right shape to feed into the keras model
-# The 'length' or number of images you can put into the array is
-# determined by the first position in the shape tuple, in this case 1
-data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+def predict(image_path: str | Path, detection_confidence: float = DEFAULT_DETECTION_CONFIDENCE) -> str:
+    """Predict mood label for a photo using the trained RandomForest model."""
+    model, label_encoder = _ensure_model_loaded()
+    features = extract_landmarks(Path(image_path), detection_confidence)
 
-def predict(image_path):
-    # Replace this with the path to your image
-    image = Image.open(image_path).convert("RGB")
+    expected_features = getattr(model, "n_features_in_", features.size)
+    if features.size != expected_features:
+        raise ValueError(
+            f"Feature length mismatch. Model expects {expected_features} values, got {features.size}."
+        )
 
-    # resizing the image to be at least 224x224 and then cropping from the center
-    size = (224, 224)
-    image = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
-
-    # turn the image into a numpy array
-    image_array = np.asarray(image)
-
-    # Normalize the image
-    normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
-
-    # Load the image into the array
-    data[0] = normalized_image_array
-
-    # Predicts the model
-    prediction = model.predict(data)
-    index = np.argmax(prediction)
-    class_name = class_names[index]
-    confidence_score = prediction[0][index]
-
-    # Print prediction and confidence score
-    print("Class:", class_name[2:], end="")
-    print("Confidence Score:", confidence_score)
-    return class_name[2:]
+    features_batch = features.reshape(1, -1)
+    encoded_prediction = model.predict(features_batch)[0]
+    predicted_label = label_encoder.inverse_transform([encoded_prediction])[0]
+    return str(predicted_label)

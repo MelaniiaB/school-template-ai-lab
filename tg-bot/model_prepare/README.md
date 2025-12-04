@@ -8,9 +8,7 @@ MediaPipe Face Mesh landmarks, and export a CSV table for later classification.
 ```bash
 cd tg-bot
 cd model_prepare
-python extract_face_landmarks.py \
-  --dataset-dir dataset \
-  --output face_landmarks.csv
+python extract_face_landmarks.py --dataset-dir dataset --output face_landmarks.csv
 ```
 
 Arguments:
