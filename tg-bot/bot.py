@@ -1,9 +1,17 @@
+import collections
+import collections.abc
+collections.Hashable = collections.abc.Hashable
+
 import telepot
 from telepot.loop import MessageLoop
 from telepot.delegate import pave_event_space, per_chat_id, create_open
 from openai import OpenAI
 import os
+import glob
+from dotenv import load_dotenv
 from mood_model import predict
+
+load_dotenv()
 
 client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"),
@@ -26,13 +34,13 @@ class SafeMoodBot(telepot.helper.ChatHandler):
 
         self.bot.download_file(msg['video_note']['file_id'], msg['video_note']['file_id'] + ".mp4")
         
-        # extract mp3 from mp4
-        os.system(f"ffmpeg -i {msg['video_note']['file_id']}.mp4 -vn -acodec libmp3lame {msg['video_note']['file_id']}.mp3")
+        # extract audio from mp4 (wav format - no special encoder needed)
+        os.system(f"ffmpeg -i {msg['video_note']['file_id']}.mp4 -vn {msg['video_note']['file_id']}.wav")
         # extract jpg frames from mp4
         os.system(f"ffmpeg -i {msg['video_note']['file_id']}.mp4 -vf fps=1 {msg['video_note']['file_id']}_%04d.jpg")
 
 
-        audio_file = open(f"{msg['video_note']['file_id']}.mp3", "rb")
+        audio_file = open(f"{msg['video_note']['file_id']}.wav", "rb")
 
         transcription = client.audio.transcriptions.create(
             model="gpt-4o-transcribe", 
@@ -61,15 +69,18 @@ class SafeMoodBot(telepot.helper.ChatHandler):
         )
 
         os.remove(msg['video_note']['file_id'] + ".mp4")
-        os.remove(msg['video_note']['file_id'] + ".mp3")
-        os.system("rm " + msg['video_note']['file_id'] + "_*.jpg")
+        os.remove(msg['video_note']['file_id'] + ".wav")
+        # Remove extracted frames
+        for f in glob.glob(msg['video_note']['file_id'] + "_*.jpg"):
+            os.remove(f)
 
         self.sender.sendMessage(completions.choices[0].message.content)
 
-
-bot = telepot.DelegatorBot(os.environ.get("BOT_KEY"), [
-    pave_event_space()(
-        per_chat_id(), create_open, SafeMoodBot, timeout=10),
-])
-bot.deleteWebhook()
-MessageLoop(bot).run_forever()
+if __name__ == "__main__":
+    print("Starting bot...")
+    bot = telepot.DelegatorBot(os.environ.get("BOT_KEY"), [
+        pave_event_space()(
+            per_chat_id(), create_open, SafeMoodBot, timeout=10),
+    ])
+    bot.deleteWebhook()
+    MessageLoop(bot).run_forever()

@@ -15,8 +15,8 @@ from sklearn.preprocessing import LabelEncoder
 
 NUM_LANDMARKS = 478
 DEFAULT_IMAGE_SIZE = (224, 224)  # Pillow uses this only for debugging; FaceMesh needs raw image.
-DEFAULT_MODEL = Path(__file__).resolve().parent / "artifacts" / "random_forest.joblib"
-DEFAULT_LABELS = Path(__file__).resolve().parent / "artifacts" / "label_encoder.joblib"
+DEFAULT_MODEL = Path(__file__).resolve().parent.parent / "artifacts" / "random_forest.joblib"
+DEFAULT_LABELS = Path(__file__).resolve().parent.parent / "artifacts" / "label_encoder.joblib"
 
 
 def parse_args() -> argparse.Namespace:
