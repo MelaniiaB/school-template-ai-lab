@@ -49,7 +49,6 @@ logs/
 # Model files (if large)
 *.h5
 *.pkl
-*.joblib
 
 # Media files generated at runtime
 *.mp4
