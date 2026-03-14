@@ -53,6 +53,7 @@ logs/
 # Media files generated at runtime
 *.mp4
 *.mp3
+*.wav
 *.jpg
 *.png
 

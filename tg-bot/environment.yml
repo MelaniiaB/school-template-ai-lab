@@ -5,10 +5,8 @@ dependencies:
   - python<=3.11
   - mamba
   - openai
-  - keras
   - numpy
   - pillow
-  - tensorflow
   - opencv
   - pandas
   - scikit-learn
@@ -16,9 +14,9 @@ dependencies:
   - pip
   - pip:
     - --index-url https://pypi.org/simple/
-    - protobuf>=5.0,<6.0
+    - protobuf>=3.20.3,<4.0.0
     - mcpi
-    - mediapipe
+    - mediapipe==0.10.9
     - joblib
     - telepot
     - pillow-heif
