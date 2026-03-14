@@ -15,6 +15,8 @@ dependencies:
   - ffmpeg
   - pip
   - pip:
+    - --index-url https://pypi.org/simple/
+    - protobuf>=5.0,<6.0
     - mcpi
     - mediapipe
     - joblib
